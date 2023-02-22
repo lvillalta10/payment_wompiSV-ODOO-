@@ -1,91 +1,75 @@
 import logging
-import pprint
-import werkzeug
-import json
 
-from odoo import http
-from odoo.http import request
-from odoo.http import Response
-from odoo.addons.payment.models.payment_acquirer import ValidationError
+from odoo import api, fields, models, tools
+from odoo.exceptions import UserError
+from odoo.tools import float_round
 
 _logger = logging.getLogger(__name__)
 
+class PaymentAcquirerWompi(models.Model):
+    _inherit = 'payment.acquirer'
 
-class WompiColController(http.Controller):
+    provider = fields.Selection(selection_add=[('wompiels', 'Wompi El Salvador')])
+    wompiels_public_key = fields.Char(string='Wompi El Salvador Public Key', required_if_provider='wompiels', groups='base.group_user')
+    wompiels_private_key = fields.Char(string='Wompi El Salvador Private Key', required_if_provider='wompiels', groups='base.group_user')
+    wompiels_test_public_key = fields.Char(string='Wompi El Salvador Test Public Key', required_if_provider='wompiels', groups='base.group_user')
+    wompiels_test_private_key = fields.Char(string='Wompi El Salvador Test Private Key', required_if_provider='wompiels', groups='base.group_user')
 
-    @http.route(['/payment/wompicol/response',
-                '/payment/wompicol_test/response'],
-                type='json', auth='public', csrf=False)
-    def wompicol_response(self):
-        """ Wompi Colombia """
-        # Wompi servers will post the event information
-        # {
-        #   "event": "transaction.updated",
-        #   "data": {
-        #     "transaction": {
-        #         "id": "01-1532941443-49201",
-        #         "amount_in_cents": 4490000,
-        #         "reference": "MZQ3X2DE2SMX",
-        #         "customer_email": "juan.perez@gmail.com",
-        #         "currency": "COP",
-        #         "payment_method_type": "NEQUI",
-        #         "redirect_url": "https://mitienda.com.co/pagos/redireccion",
-        #         "status": "APPROVED",
-        #         "shipping_address": null,
-        #         "payment_link_id": null,
-        #         "payment_source_id": null
-        #       }
-        #   },
-        #   "sent_at":  "2018-07-20T16:45:05.000Z"
-        # }
-        post = json.loads(request.httprequest.data)
-        if post:
-            # If entered on the test endpoint, let's add it to the data
-            if 'wompicol_test' in request.httprequest.path:
-                post["test"] = 1
-
-            # Log the event data
-            _logger.info(
-                'Wompicol: entering form_feedback with post response data %s',
-                pprint.pformat(post))
-
-            ref = post.get('data', {}).get('transaction', {}).get('reference', {})
-            if '_' in ref:
-                post['data']['transaction']['reference'] = ref.split('_')[0]
-
-            if post.get('noconfirm'):
-                raise ValidationError('Wompicol: should not receive "noconfirm" on the controller')
-
-            # Process the data
-            request.env['payment.transaction'].sudo().form_feedback(
-                    post,
-                    'wompicol')
+    @api.model
+    def _get_wompiels_urls(self, environment):
+        """ Wompi El Salvador URLs"""
+        if environment == 'prod':
+            return {
+                'wompiels_form_url': 'https://checkout.wompi.sv/v1/checkouts/',
+                'wompiels_api_url': 'https://api.wompi.sv'
+            }
         else:
-            _logger.info(
-                'Wompicol: for feedback entered with incomplete data %s',
-                pprint.pformat(post))
+            return {
+                'wompiels_form_url': 'https://sandbox.wompi.sv/v1/checkouts/',
+                'wompiels_api_url': 'https://sandbox.wompi.sv'
+            }
 
-        return werkzeug.utils.redirect('/')
+    def _get_wompiels_api_headers(self, environment):
+        headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        }
+        if environment == 'prod':
+            headers['Authorization'] = f'Bearer {self.wompiels_private_key}'
+        else:
+            headers['Authorization'] = f'Bearer {self.wompiels_test_private_key}'
+        return headers
 
-    @http.route('/payment/wompicol/client_return', type='http',
-                auth='public', csrf=False)
-    def wompicol_client_return(self, **post):
-        """ Wompi Colombia """
-        # The client browser will comeback with the following data
-        # {
-        #   'env': 'test',
-        #   'id': '16056-1597266116-33603'
-        # }
+    def wompiels_form_generate_values(self, values):
+        self.ensure_one()
+        base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
+        wompiels_tx_values = dict(values)
+        wompiels_tx_values.update({
+            'public_key': self.wompiels_public_key,
+            'amount_in_cents': int(wompiels_tx_values['amount'] * 100),
+            'currency': 'USD',
+            'reference': values['reference'],
+            'redirect_url': '%s' % (base_url),
+        })
+        return wompiels_tx_values
 
-        _logger.info('Wompicol: client browser returning. %s',
-                     pprint.pformat(post))
-        if post:
-            id = post.get('id')
-            env = post.get('env')
-            env = env if env == 'test' else 'prod'
-            # Process the data
-            request.env[
-                    'payment.transaction'
-                    ].sudo()._wompicol_get_data_manually(id, env)
+    def wompiels_get_form_action_url(self):
+        return self._get_wompiels_urls(self.state)['wompiels_form_url']
 
-        return werkzeug.utils.redirect('/payment/process')
+    def _wompiels_generate_tx_values(self, order, acquirer):
+        partner = order.partner_id.commercial_partner_id
+        tx_values = {
+            'amount': order.amount_total,
+            'currency': 'USD',
+            'reference': order.name,
+            'description': order.name,
+            'payer_email': partner.email,
+            'payer_name': partner.name,
+            'redirect_url': '%s' % (acquirer.return_url),
+            'cancel_url': '%s' % (acquirer.cancel_url),
+            'test': 'yes' if acquirer.state == 'test' else 'no',
+        }
+        return tx_values
+
+    def wompiels_get_api_url(self):
+        return self

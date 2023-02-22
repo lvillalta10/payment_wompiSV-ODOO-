@@ -1,6 +1,6 @@
 {
-    'name': 'Wompi Payment Acquirer',
-    'author': 'Lintec Tecnología',
+    'name': 'Wompi Payment Acquirer El Salvador',
+    'author': 'Coraventas',
     'category': 'Accounting/Payment',
     'summary': 'Payment Acquirer: Wompi Colombia Implementation',
     'description': """Wompi Colombia payment acquirer""",

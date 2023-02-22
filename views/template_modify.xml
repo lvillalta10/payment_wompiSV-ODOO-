@@ -1,9 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <data>
-        <template id="assets_frontend" inherit_id="website.assets_frontend">
-            <xpath expr="script[last()]" position="after">
-                <script type="text/javascript" src="/payment_wompicol/static/src/js/payment_form.js"></script>
-            </xpath>
-        </template>
-    </data>
+    <template id="assets_common" name="payment_wompi assets" inherit_id="web.assets_common">
+        <xpath expr="." position="inside">
+            <link rel="stylesheet" href="/payment_wompi/static/src/css/payment_wompi.css"/>
+            <script type="text/javascript" src="/payment_wompi/static/src/js/payment_wompi.js"></script>
+        </xpath>
+    </template>
+
+    <template id="payment_wompi_checkout">
+        <t t-call="website.layout">
+            <t t-set="page_name" t-value="'Payment'"/>
+            <div class="container mt32">
+                <h1>Pay with Wompi</h1>
+                <t t-raw="payment.get_wompi_checkout_form()"/>
+            </div>
+        </t>
+    </template>
+
+    <template id="payment_wompi_confirmation" name="Wompi Payment Confirmation">
+        <t t-call="website.layout">
+            <t t-set="page_name" t-value="'Payment Confirmation'"/>
+            <div class="container mt32">
+                <h1>Payment Confirmation</h1>
+                <div class="alert alert-success text-center">
+                    <strong>Congratulations!</strong> Your payment has been successfully processed.
+                </div>
+                <div class="row">
+                    <div class="col-md-8 col-md-offset-2">
+                        <table class="table table-bordered">
+                            <tbody>
+                                <tr>
+                                    <td><strong>Transaction ID:</strong></td>
+                                    <td><t t-esc="payment.get_wompi_payment_id()"/></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Date:</strong></td>
+                                    <td><t t-esc="payment.get_wompi_payment_date()"/></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Amount:</strong></td>
+                                    <td><t t-esc="payment.get_wompi_payment_amount()"/></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Payment Method:</strong></td>
+                                    <td><t t-esc="payment.get_wompi_payment_method()"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p class="text-center">
+                            <a class="btn btn-primary" href="/shop">Back to Shop</a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
 </odoo>

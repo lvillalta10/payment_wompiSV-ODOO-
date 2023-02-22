@@ -1,13 +1,72 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <template id="wompicol_form">
-        <div>
-            <input type="hidden" name="data_set" t-att-data-action-url="tx_url" data-remove-me=""/>
-            <input type="hidden" name="public-key" t-att-value='publickey'/>
-            <input type="hidden" name="currency" t-att-value='currency'/>
-            <input type="hidden" name="amount-in-cents" t-att-value='amountcents'/>
-            <input type="hidden" name="reference" t-att-value='referenceCode'/>
-            <input type="hidden" name="redirect-url" t-att-value='redirectUrl'/>
-        </div>
+    <!-- Payment Acquirer: Wompi - Payment Form -->
+    <template id="payment_acquirer_wompi_form" inherit_id="payment.payment_form_template">
+        <xpath expr="//div[@id='payment_method_form']" position="inside">
+            <div t-if="reference" class="form-group">
+                <label for="reference" class="col-sm-5 control-label">
+                    Reference:
+                </label>
+                <div class="col-sm-7">
+                    <p t-field="reference"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="card_holder_name" class="col-sm-5 control-label">
+                    Card Holder Name:
+                </label>
+                <div class="col-sm-7">
+                    <input type="text" class="form-control" id="card_holder_name" name="card_holder_name" placeholder="Enter your name" required="required"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="card_number" class="col-sm-5 control-label">
+                    Card Number:
+                </label>
+                <div class="col-sm-7">
+                    <input type="text" class="form-control" id="card_number" name="card_number" placeholder="Enter your card number" required="required"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="card_expiry" class="col-sm-5 control-label">
+                    Expiration Date (MM/YYYY):
+                </label>
+                <div class="col-sm-7">
+                    <input type="text" class="form-control" id="card_expiry" name="card_expiry" placeholder="Enter expiration date" required="required"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="card_cvc" class="col-sm-5 control-label">
+                    CVC:
+                </label>
+                <div class="col-sm-7">
+                    <input type="text" class="form-control" id="card_cvc" name="card_cvc" placeholder="Enter your CVC" required="required"/>
+                </div>
+            </div>
+        </xpath>
     </template>
-</odoo>
+
+    <!-- Payment Acquirer: Wompi - Payment Request -->
+    <template id="payment_acquirer_wompi_request" inherit_id="payment.payment_request_template">
+        <xpath expr="//div[@class='panel-body']" position="inside">
+            <div class="form-group">
+                <label for="card_holder_name" class="col-sm-4 control-label">
+                    Card Holder Name:
+                </label>
+                <div class="col-sm-8">
+                    <p t-field="card_holder_name"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="card_number" class="col-sm-4 control-label">
+                    Card Number:
+                </label>
+                <div class="col-sm-8">
+                    <p t-field="card_number"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="card_expiry" class="col-sm-4 control-label">
+                    Expiration Date:
+                </label>
+               
